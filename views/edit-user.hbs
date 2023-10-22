@@ -12,8 +12,8 @@
   </div>
 {{/if}}
 
- {{#each kq}} 
-<form class="row g-3 needs-validation" method="POST" action="/edituser/{{this.id}}" novalidate> 
+
+<form class="row g-3 needs-validation" method="POST" action="/edituser/{{kq.id}}" novalidate> 
   {{> user-form}}
 </form>
- {{/each}} 
+ 
