@@ -1,23 +1,104 @@
 
 const { Client } = require('pg')
+ const {
+  RDSClient,
+  DescribeDBInstancesCommand,
+} = require("@aws-sdk/client-rds");
+const {
+  SecretsManagerClient,
+  ListSecretsCommand,
+  GetSecretValueCommand,
+} = require("@aws-sdk/client-secrets-manager");
 
+const region = process.env.AWS_REGION;
 
+const run = async () => {
+  const rdsClient = new RDSClient({ region: region });
+  const smClient = new SecretsManagerClient({ region: region });
+  let connection={
+    endpoint:'',
+    port:'',
+    username:'',
+    password:''
+  };
+  //let endpoint;
+  //let port;
+  try {
+    const describeDBInstancesCommand = new DescribeDBInstancesCommand({
+      DBInstanceIdentifier: "rdspg-fcj-labs",
+    });
+    const describeDBInstancesResponse = await rdsClient.send(
+      describeDBInstancesCommand
+    );
+
+    connection.endpoint = describeDBInstancesResponse.DBInstances[0].Endpoint.Address;
+    connection.port = describeDBInstancesResponse.DBInstances[0].Endpoint.Port;
+  } catch (err) {
+    console.error(err);
+  }
+  let secretArn;
+  try {
+    const listSecretsCommand = new ListSecretsCommand({
+      Filters: [{ Key: "name", Values: ["secretPostgresqlMasterUser"] }],
+    });
+    const listSecretsResponse = await smClient.send(listSecretsCommand);
+    secretArn = listSecretsResponse.SecretList[0].ARN;
+  } catch (err) {
+    console.error(err);
+  }
+  //let username;
+  //let password;
+  try {
+    const getSecretValueCommand = new GetSecretValueCommand({
+      SecretId: secretArn,
+    });
+    const getSecretValueResponse = await smClient.send(getSecretValueCommand);
+    const secretString = JSON.parse(getSecretValueResponse.SecretString);
+    connection.username = secretString.username;
+    connection.password = secretString.password;
+    
+  } catch (err) {
+    console.error(err);
+  }
+  console.log(connection)
+  return connection 
+};
+ let {endpoint:endpoint,port,username,password}= run();
+ console.log(endpoint)
+ const client = new Client({
+  user: username,
+  password: password,
+  host: endpoint,
+  database: "pglab",
+  port: port,
+  /* ssl: {
+    rejectUnauthorized: false,
+   }  */
+});
+client.connect((err) => {
+  if (err) {
+    console.error("connection error", err.stack);
+  }else{
+    console.log('connected')
+  }
+});
+// client.query("select current_user, current_database()", (err, res) => {
+//   if (err) throw err;
+//   console.log(res["rows"]);
+//   client.end();
+// });
+/*
 const client = new Client({
   user: process.env.DB_USER,
   host:  process.env.DB_HOST,
   database: process.env.DB_NAME,
   password:  process.env.DB_PASS,
   port: 5432,
-   ssl: {
+  /*  ssl: {
    rejectUnauthorized: false,
-  }
-}) 
+  } 
+}) */
 
-client.connect(function(err) {
-  if (err) throw err;
-  console.log("Connected pg!");
-
-});
 
 // View Users
 exports.view = async (req, res) => {
