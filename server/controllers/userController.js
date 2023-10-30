@@ -39,7 +39,7 @@ const run = async () => {
   let secretArn;
   try {
     const listSecretsCommand = new ListSecretsCommand({
-      Filters: [{ Key: "name", Values: ["secretPostgresqlMasterUser"] }],
+      Filters: [{ Key: "name", Values: ["secretPostgresqlMasterUser1"] }],
     });
     const listSecretsResponse = await smClient.send(listSecretsCommand);
     secretArn = listSecretsResponse.SecretList[0].ARN;
